@@ -1,117 +1,285 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { getDocuments, updateDocument, addDocument, deleteDocument } from '@/app/actions/knowledge';
 
-const articles = [
-  {
-    id: 1,
-    title: '人工智能在软件开发中的应用',
-    category: '技术趋势',
-    date: '2024-03-10',
-    summary: '探讨AI如何改变软件开发流程，提高开发效率和代码质量。',
-    author: '张三',
-  },
-  {
-    id: 2,
-    title: '微服务架构最佳实践',
-    category: '架构设计',
-    date: '2024-03-08',
-    summary: '分享微服务架构的设计原则、实施策略和常见陷阱。',
-    author: '李四',
-  },
-  {
-    id: 3,
-    title: '云原生应用开发指南',
-    category: '云计算',
-    date: '2024-03-05',
-    summary: '详解云原生应用的特点、开发方法和部署策略。',
-    author: '王五',
-  },
-];
-
-const categories = ['全部', '技术趋势', '架构设计', '云计算', '开发工具', '最佳实践'];
+interface Document {
+  id: number;
+  title: string;
+  url: string;
+  type: string;
+  description: string;
+  updateTime: string;
+}
 
 export default function KnowledgePage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('全部');
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const filteredArticles = articles.filter((article) => {
-    const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.summary.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === '全部' || article.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  async function loadDocuments() {
+    const docs = await getDocuments();
+    setDocuments(docs);
+  }
+
+  function handleEdit(doc: Document) {
+    setEditingDoc(doc);
+    setIsEditing(true);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (editingDoc) {
+      await updateDocument(editingDoc.id, editingDoc);
+      setIsEditing(false);
+      setEditingDoc(null);
+      loadDocuments();
+    }
+  }
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (editingDoc) {
+      const { id, ...newDoc } = editingDoc;
+      await addDocument(newDoc);
+      setShowAddForm(false);
+      setEditingDoc(null);
+      loadDocuments();
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (confirm('确定要删除这个文档吗？')) {
+      await deleteDocument(id);
+      loadDocuments();
+    }
+  }
+
+  function handleAddNew() {
+    setEditingDoc({
+      id: 0,
+      title: '',
+      url: '',
+      type: 'feishu',
+      description: '',
+      updateTime: new Date().toISOString().split('T')[0]
+    });
+    setShowAddForm(true);
+  }
+
+  const DocumentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => Promise<void>, buttonText: string }) => (
+    <form onSubmit={onSubmit} className="bg-white p-6 rounded-lg shadow-lg">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">标题</label>
+          <input
+            type="text"
+            value={editingDoc?.title || ''}
+            onChange={e => setEditingDoc(prev => prev ? { ...prev, title: e.target.value } : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">链接</label>
+          <input
+            type="url"
+            value={editingDoc?.url || ''}
+            onChange={e => setEditingDoc(prev => prev ? { ...prev, url: e.target.value } : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">描述</label>
+          <textarea
+            value={editingDoc?.description || ''}
+            onChange={e => setEditingDoc(prev => prev ? { ...prev, description: e.target.value } : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            rows={3}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">更新时间</label>
+          <input
+            type="date"
+            value={editingDoc?.updateTime || ''}
+            onChange={e => setEditingDoc(prev => prev ? { ...prev, updateTime: e.target.value } : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end space-x-3">
+        <button
+          type="button"
+          onClick={() => {
+            setIsEditing(false);
+            setShowAddForm(false);
+            setEditingDoc(null);
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          取消
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+        >
+          {buttonText}
+        </button>
+      </div>
+    </form>
+  );
 
   return (
-    <div className="py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">前沿知识分享</h1>
-          <p className="mt-4 text-lg text-gray-600">
-            发现和分享最新的技术趋势、最佳实践和行业洞察
-          </p>
-        </div>
-
-        {/* 搜索和筛选 */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="搜索文章..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="sm:w-48">
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+    <div>
+      {/* Page Header */}
+      <div className="relative h-[300px] mb-12">
+        <Image
+          src="/images/knowledge.jpg"
+          alt="Knowledge sharing background"
+          fill
+          className="object-cover brightness-50"
+          priority
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center text-white">
+            <h1 className="text-4xl font-bold mb-4">知识分享</h1>
+            <p className="text-xl max-w-2xl">分享团队经验，传递实践智慧</p>
           </div>
         </div>
+      </div>
 
-        {/* 文章列表 */}
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredArticles.map((article) => (
-            <article
-              key={article.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-medium text-indigo-600">
-                    {article.category}
-                  </span>
-                  <span className="text-sm text-gray-500">{article.date}</span>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  {article.title}
-                </h2>
-                <p className="text-gray-600 mb-4">{article.summary}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">作者: {article.author}</span>
-                  <button className="text-indigo-600 hover:text-indigo-700 font-medium">
-                    阅读更多
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Add Button */}
+        <div className="mb-6">
+          <button
+            onClick={handleAddNew}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            添加文档
+          </button>
         </div>
 
-        {filteredArticles.length === 0 && (
-          <div className="text-center mt-8 p-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">没有找到匹配的文章</p>
+        {/* Edit/Add Form Modal */}
+        {(isEditing || showAddForm) && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="max-w-md w-full">
+              <DocumentForm 
+                onSubmit={showAddForm ? handleAdd : handleSave}
+                buttonText={showAddForm ? "添加" : "保存"}
+              />
+            </div>
           </div>
         )}
+
+        {/* Documents Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {documents.map(doc => (
+            <div
+              key={doc.id}
+              className="group bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative"
+            >
+              {/* Document Content */}
+              <a 
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <div className="aspect-video relative bg-gray-100">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg 
+                      className="w-16 h-16 text-blue-500 group-hover:scale-110 transition-transform" 
+                      fill="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M14.568.075c2.202 1.174 4.046 2.915 5.223 5.116h-5.223V.075zm-1.161-.05v5.141H7.191c1.178-2.2 3.021-3.942 5.216-5.116v-.025zM7.191 6.232h6.216v5.141H7.191V6.232zm7.377 0h5.223v5.141h-5.223V6.232zM7.191 12.44h6.216v5.141H7.191V12.44zm7.377 0h5.223v5.141h-5.223V12.44zM7.191 18.647h6.216v5.141c-2.195-1.174-4.038-2.915-5.216-5.116h-1v-.025zm7.377 0h5.223c-1.177 2.201-3.021 3.942-5.223 5.116v-5.116z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <svg 
+                      className="w-5 h-5 text-blue-500" 
+                      fill="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h5v7h7v9H6z"/>
+                    </svg>
+                    <span className="text-sm text-gray-500">飞书文档</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    {doc.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm line-clamp-2">
+                    {doc.description}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-500">更新于 {doc.updateTime}</span>
+                    </div>
+                    <span className="inline-flex items-center text-blue-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                      查看文档
+                      <svg 
+                        className="w-4 h-4 ml-1" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M9 5l7 7-7 7" 
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </a>
+
+              {/* Edit/Delete Buttons */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleEdit(doc);
+                  }}
+                  className="p-2 text-gray-600 hover:text-blue-600 bg-white rounded-full shadow-md hover:shadow-lg transition-all mr-2"
+                  title="编辑"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDelete(doc.id);
+                  }}
+                  className="p-2 text-gray-600 hover:text-red-600 bg-white rounded-full shadow-md hover:shadow-lg transition-all"
+                  title="删除"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
