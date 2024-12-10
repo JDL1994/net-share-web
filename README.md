@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 内部培训管理系统
 
-## Getting Started
+这是一个基于Next.js 14开发的内部培训管理系统，用于管理和组织内部培训活动。
 
-First, run the development server:
+## 功能特点
 
+- 培训日历展示
+- 培训信息管理（添加、编辑、删除）
+- 参与人员管理
+- 培训材料管理
+- 响应式设计，支持多设备访问
+
+## 技术栈
+
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+- Server Actions
+- Server Components
+
+## 开始使用
+
+1. 克隆项目
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone [你的仓库地址]
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. 安装依赖
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. 运行开发服务器
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. 在浏览器中访问 `http://localhost:3000` 或 `http://[本地IP]:3000`
 
-## Learn More
+## 项目结构
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  ├── app/
+  │   ├── (pages)/
+  │   │   ├── calendar/     # 培训日历页面
+  │   │   └── training/     # 培训列表页面
+  │   ├── api/             # API路由和数据存储
+  │   ├── components/      # 共享组件
+  │   └── layout.tsx       # 全局布局
+  ├── types/              # TypeScript类型定义
+  └── utils/              # 工具函数
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 开发指南
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 所有培训数据存储在 `src/app/api/db/trainings.json` 文件中
+- 使用Server Actions进行数据操作
+- 页面采用服务器端组件优先的策略
+- 使用TypeScript确保类型安全
 
-## Deploy on Vercel
+## 贡献指南
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启Pull Request

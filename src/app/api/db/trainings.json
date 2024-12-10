@@ -1,0 +1,35 @@
+{
+  "trainings": [
+    {
+      "title": "test",
+      "date": "2024-12-19",
+      "time": "16:25",
+      "instructor": "111",
+      "location": "111",
+      "capacity": 11,
+      "description": "1111",
+      "materials": [],
+      "id": 1733819131196,
+      "registered": 0,
+      "participants": [
+        {
+          "name": "111",
+          "department": "11",
+          "reason": "1",
+          "status": "unavailable"
+        }
+      ]
+    },
+    {
+      "title": "222",
+      "date": "2024-12-12",
+      "time": "16:45",
+      "instructor": "1",
+      "location": "111",
+      "description": "1问问",
+      "id": 1733820134230,
+      "participants": [],
+      "materials": []
+    }
+  ]
+}
