@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import Image from 'next/image';
 import { getDocuments, updateDocument, addDocument, deleteDocument } from '@/app/actions/knowledge';
 
@@ -13,131 +13,216 @@ interface Document {
   updateTime: string;
 }
 
+interface FormData {
+  title: string;
+  url: string;
+  type: string;
+  description: string;
+  updateTime: string;
+}
+
+const initialFormData: FormData = {
+  title: '',
+  url: '',
+  type: 'feishu',
+  description: '',
+  updateTime: new Date().toISOString().split('T')[0]
+};
+
+const DocumentFormInput = memo(({ 
+  id, 
+  name, 
+  label, 
+  type = 'text',
+  value, 
+  onChange,
+  rows
+}: { 
+  id: string;
+  name: string;
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  rows?: number;
+}) => {
+  if (type === 'textarea') {
+    return (
+      <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <textarea
+          id={id}
+          name={name}
+          value={value}
+          onChange={onChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          rows={rows || 3}
+          required
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+      <input
+        id={id}
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        required
+      />
+    </div>
+  );
+});
+
+DocumentFormInput.displayName = 'DocumentFormInput';
+
+const DocumentForm = memo(({ 
+  onSubmit, 
+  buttonText,
+  formData,
+  onInputChange,
+  onCancel
+}: { 
+  onSubmit: (e: React.FormEvent) => Promise<void>;
+  buttonText: string;
+  formData: FormData;
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCancel: () => void;
+}) => (
+  <form onSubmit={onSubmit} className="bg-white p-6 rounded-lg shadow-lg">
+    <div className="space-y-4">
+      <DocumentFormInput
+        id="title"
+        name="title"
+        label="标题"
+        value={formData.title}
+        onChange={onInputChange}
+      />
+      <DocumentFormInput
+        id="url"
+        name="url"
+        label="链接"
+        type="url"
+        value={formData.url}
+        onChange={onInputChange}
+      />
+      <DocumentFormInput
+        id="description"
+        name="description"
+        label="描述"
+        type="textarea"
+        value={formData.description}
+        onChange={onInputChange}
+        rows={3}
+      />
+      <DocumentFormInput
+        id="updateTime"
+        name="updateTime"
+        label="更新时间"
+        type="date"
+        value={formData.updateTime}
+        onChange={onInputChange}
+      />
+    </div>
+    <div className="mt-6 flex justify-end space-x-3">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        取消
+      </button>
+      <button
+        type="submit"
+        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+      >
+        {buttonText}
+      </button>
+    </div>
+  </form>
+));
+
+DocumentForm.displayName = 'DocumentForm';
+
 export default function KnowledgePage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+
+  const loadDocuments = useCallback(async () => {
+    const docs = await getDocuments();
+    setDocuments(docs);
+  }, []);
 
   useEffect(() => {
     loadDocuments();
-  }, []);
+  }, [loadDocuments]);
 
-  async function loadDocuments() {
-    const docs = await getDocuments();
-    setDocuments(docs);
-  }
+  useEffect(() => {
+    if (editingDoc) {
+      const { id, ...rest } = editingDoc;
+      setFormData(rest);
+    }
+  }, [editingDoc]);
 
-  function handleEdit(doc: Document) {
+  const handleEdit = useCallback((doc: Document) => {
     setEditingDoc(doc);
     setIsEditing(true);
-  }
+  }, []);
 
-  async function handleSave(e: React.FormEvent) {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }, []);
+
+  const handleSave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingDoc) {
-      await updateDocument(editingDoc.id, editingDoc);
+      await updateDocument(editingDoc.id, formData);
       setIsEditing(false);
       setEditingDoc(null);
+      setFormData(initialFormData);
       loadDocuments();
     }
-  }
+  }, [editingDoc, formData, loadDocuments]);
 
-  async function handleAdd(e: React.FormEvent) {
+  const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingDoc) {
-      const { id, ...newDoc } = editingDoc;
-      await addDocument(newDoc);
-      setShowAddForm(false);
-      setEditingDoc(null);
-      loadDocuments();
-    }
-  }
+    await addDocument(formData);
+    setShowAddForm(false);
+    setEditingDoc(null);
+    setFormData(initialFormData);
+    loadDocuments();
+  }, [formData, loadDocuments]);
 
-  async function handleDelete(id: number) {
+  const handleDelete = useCallback(async (id: number) => {
     if (confirm('确定要删除这个文档吗？')) {
       await deleteDocument(id);
       loadDocuments();
     }
-  }
+  }, [loadDocuments]);
 
-  function handleAddNew() {
-    setEditingDoc({
-      id: 0,
-      title: '',
-      url: '',
-      type: 'feishu',
-      description: '',
-      updateTime: new Date().toISOString().split('T')[0]
-    });
+  const handleAddNew = useCallback(() => {
+    setFormData(initialFormData);
     setShowAddForm(true);
-  }
+  }, []);
 
-  const DocumentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => Promise<void>, buttonText: string }) => (
-    <form onSubmit={onSubmit} className="bg-white p-6 rounded-lg shadow-lg">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">标题</label>
-          <input
-            type="text"
-            value={editingDoc?.title || ''}
-            onChange={e => setEditingDoc(prev => prev ? { ...prev, title: e.target.value } : null)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">链接</label>
-          <input
-            type="url"
-            value={editingDoc?.url || ''}
-            onChange={e => setEditingDoc(prev => prev ? { ...prev, url: e.target.value } : null)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">描述</label>
-          <textarea
-            value={editingDoc?.description || ''}
-            onChange={e => setEditingDoc(prev => prev ? { ...prev, description: e.target.value } : null)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            rows={3}
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">更新时间</label>
-          <input
-            type="date"
-            value={editingDoc?.updateTime || ''}
-            onChange={e => setEditingDoc(prev => prev ? { ...prev, updateTime: e.target.value } : null)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={() => {
-            setIsEditing(false);
-            setShowAddForm(false);
-            setEditingDoc(null);
-          }}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          取消
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          {buttonText}
-        </button>
-      </div>
-    </form>
-  );
+  const handleCancel = useCallback(() => {
+    setIsEditing(false);
+    setShowAddForm(false);
+    setEditingDoc(null);
+    setFormData(initialFormData);
+  }, []);
 
   return (
     <div>
@@ -179,6 +264,9 @@ export default function KnowledgePage() {
               <DocumentForm 
                 onSubmit={showAddForm ? handleAdd : handleSave}
                 buttonText={showAddForm ? "添加" : "保存"}
+                formData={formData}
+                onInputChange={handleInputChange}
+                onCancel={handleCancel}
               />
             </div>
           </div>
